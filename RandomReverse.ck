@@ -1,50 +1,45 @@
 // Eric Heep
 // March 14th, 2017
-// AsymptopicChopper.ck
+// RandomReverse.ck
 
-public class AsymptopicChopper extends Chubgraph {
+public class RandomReverse extends Chubgraph {
 
     inlet => LiSa mic => outlet;
 
-    int recOn;
-    8::second => dur buffer;
+    int listenOn;
 
-    fun void record(int rcrd) {
-        if (rcrd == 1) {
-            spork ~ recording();
+    fun void listen(int l) {
+        if (l == 1) {
+            1 => listenOn;
+            spork ~ listening();
         }
-        if (rcrd == 0) {
-            0 => recOn;
+        if (l == 0) {
+            0 => listenOn;
         }
     }
 
-    fun void recording() {
-        1 => recOn;
-        mic.duration(buffer);
+    fun void listening() {
+        while (listenOn) {
+            <<< "!" >>>;
+            Math.random2f(0.1, 1.0)::second => dur bufferLength;
+            record(bufferLength);
+            playInReverse(bufferLength);
+        }
+    }
+
+    fun void record(dur bufferLength) {
+        mic.duration(bufferLength);
         mic.playPos(0::samp);
         mic.record(1);
-        now => time x;
-        while (recOn == 1) {
-            samp => now;
-        }
-        now => time y;
-        y - x => dur recTime;
+        bufferLength => now;
         mic.record(0);
-        asymptopChop(recTime);
     }
 
-    fun void asymptopChop(dur bufferLength) {
-        dur bufferStart;
+    fun void playInReverse(dur bufferLength) {
         mic.play(1);
-        while (bufferLength > 0.1::samp) {
-            Math.random2(0, 1) => int which;
-            bufferLength * 0.5 => bufferLength;
-
-            bufferLength * which => bufferStart;
-
-            mic.playPos(bufferStart);
-            bufferLength => now;
-        }
+        mic.playPos(bufferLength);
+        mic.rate(-1.0);
+        bufferLength => now;
         mic.play(0);
     }
 
@@ -52,10 +47,12 @@ public class AsymptopicChopper extends Chubgraph {
 }
 
 /*
-AsymptopicChopper a;
-adc => a => dac;
-a.record(1);
-4::second => now;
-a.record(0);
-5::second => now;
+RandomReverse rr;
+adc => rr => dac;
+
+rr.listen(1);
+
+while (true ) {
+    1::second => now;
+}
 */

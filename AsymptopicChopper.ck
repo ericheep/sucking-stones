@@ -1,45 +1,50 @@
 // Eric Heep
 // March 14th, 2017
-// RandomReverse.ck
+// AsymptopicChopper.ck
 
-public class RandomReverse extends Chubgraph {
+public class AsymptopicChopper extends Chubgraph {
 
     inlet => LiSa mic => outlet;
 
-    int listenOn;
+    int recOn;
+    8::second => dur buffer;
 
-    fun void listen(int l) {
-        if (l == 1) {
-            1 => listenOn;
-            spork ~ listening();
+    fun void record(int rcrd) {
+        if (rcrd == 1) {
+            spork ~ recording();
         }
-        if (l == 0) {
-            0 => listenOn;
-        }
-    }
-
-    fun void listening() {
-        while (listenOn) {
-            <<< "!" >>>;
-            Math.random2f(0.1, 1.0)::second => dur bufferLength;
-            record(bufferLength);
-            playInReverse(bufferLength);
+        if (rcrd == 0) {
+            0 => recOn;
         }
     }
 
-    fun void record(dur bufferLength) {
-        mic.duration(bufferLength);
+    fun void recording() {
+        1 => recOn;
+        mic.duration(buffer);
         mic.playPos(0::samp);
         mic.record(1);
-        bufferLength => now;
+        now => time x;
+        while (recOn == 1) {
+            samp => now;
+        }
+        now => time y;
+        y - x => dur recTime;
         mic.record(0);
+        asymptopChop(recTime);
     }
 
-    fun void playInReverse(dur bufferLength) {
+    fun void asymptopChop(dur bufferLength) {
+        dur bufferStart;
         mic.play(1);
-        mic.playPos(bufferLength);
-        mic.rate(-1.0);
-        bufferLength => now;
+        while (bufferLength > 0.1::samp) {
+            Math.random2(0, 1) => int which;
+            bufferLength * 0.5 => bufferLength;
+
+            bufferLength * which => bufferStart;
+
+            mic.playPos(bufferStart);
+            bufferLength => now;
+        }
         mic.play(0);
     }
 
@@ -47,12 +52,10 @@ public class RandomReverse extends Chubgraph {
 }
 
 /*
-RandomReverse rr;
-adc => rr => dac;
-
-rr.listen(1);
-
-while (true ) {
-    1::second => now;
-}
+AsymptopicChopper a;
+adc => a => dac;
+a.record(1);
+4::second => now;
+a.record(0);
+5::second => now;
 */
