@@ -7,6 +7,7 @@ Machine.add(me.dir() + "NanoKontrol2.ck");
 
 // audio classes
 Machine.add(me.dir() + "Decay.ck");
+Machine.add(me.dir() + "PitchedNoise.ck");
 
 // midi value
 Machine.add(me.dir() + "MIDIValue.ck");

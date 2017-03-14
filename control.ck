@@ -41,6 +41,9 @@ fun void updateControl() {
 1 => int NUM_MICS;
 
 Decay dec[NUM_MICS];
+PitchTrack ptrk[NUM_MICS];
+
+
 Gain master => dac;
 
 for (0 => int i; i < NUM_MICS; i++) {
@@ -48,6 +51,9 @@ for (0 => int i; i < NUM_MICS; i++) {
     dec[i].length(8::second);
     dec[i].feedback(0.5);
     dec[i].mix(1.0);
+
+    ptrik[i].frame(512);
+    ptrik[i].overlap(4);
 
     adc.chan(i) => dec[i] => master;
 }
