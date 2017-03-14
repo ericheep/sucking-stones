@@ -12,10 +12,14 @@ public class Decibel extends Chubgraph {
 
     // rms stuff
     3 => g.op;
-    0.9999 => p.pole;
+    0.99 => p.pole;
 
     fun void setPole(float pole) {
         pole => p.pole;
+    }
+
+    fun float rms() {
+        return p.last();
     }
 
     fun float decibel() {

@@ -5,6 +5,9 @@
 // communication class
 Machine.add(me.dir() + "NanoKontrol2.ck");
 
+// analyzing class
+Machine.add(me.dir() + "Decibel.ck");
+
 // audio classes
 Machine.add(me.dir() + "Decay.ck");
 Machine.add(me.dir() + "PitchedNoise.ck");

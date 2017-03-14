@@ -56,12 +56,12 @@ for (0 => int i; i < NUM_MICS; i++) {
     dec[i].feedback(0.5);
     dec[i].mix(1.0);
 
-    ptchTrk[i].frame(512);
-    ptchTrk[i].overlap(4);
+    ptchTrk[i].frame(64);
+    //ptchTrk[i].overlap(1);
 
     adc.chan(i) => dec[i] => master;
-
-    adc.chan(i) => ptchTrk[i];
+    ptchNois[i] => master;
+    adc.chan(i) => ptchTrk[i] => blackhole;
     adc.chan(i) => decib[i];
 }
 
@@ -69,8 +69,14 @@ for (0 => int i; i < NUM_MICS; i++) {
 
 fun void updateAudio() {
     for (0 => int i; i < NUM_MICS; i++) {
+        // audio processing update
+        ptchNois[i].setFreq(ptchTrk[i].get());
+        ptchNois[i].setInputGain(decib[i].decibel()/60.0);
+
+
+        // gain control update
         dec[i].gain(k[i * 2].getEasedScaledVal());
-        ptchNois[i].gain(k[(i + 1) * 2].getEasedScaledVal());
+        ptchNois[i].gain(k[i * 2 + 1].getScaledVal());
     }
 }
 
@@ -79,6 +85,8 @@ master => dac;
 while (true) {
     updateControl();
     updateAudio();
+
+    <<< decib[0].decibel(), ptchTrk[0].get(), k[1].getEasedScaledVal() >>>;
 
     updateDur => now;
 }
