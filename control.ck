@@ -79,7 +79,7 @@ fun void updateAudio() {
         // gain control update
         dec[i].gain(k[i * 2].getEasedScaledVal());
         ptchNois[i].gain(k[i * 2 + 1].getScaledVal());
-        rev[i].influence(k[i * 2 + 1].getScaledVal());
+        rev[i].influence(k[i * 2 + 2].getScaledVal());
     }
 }
 
