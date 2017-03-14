@@ -51,11 +51,9 @@ public class AsymptopicChopper extends Chubgraph {
 
 }
 
-/*
 AsymptopicChopper a;
 adc => a => dac;
 a.record(1);
-4::second => now;
+14::second => now;
 a.record(0);
-5::second => now;
-*/
+15::second => now;

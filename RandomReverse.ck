@@ -5,25 +5,47 @@
 public class RandomReverse extends Chubgraph {
 
     inlet => LiSa mic => outlet;
+    inlet => Gain g => ADSR env => outlet;
 
-    int listenOn;
+    0 => int m_listen;
+    2::second => dur m_maxBufferLength;
+    0.5 => float m_influence;
+    100::ms => dur m_envDuration;
+    5::second => dur m_maxTimeBetween;
+
+    // envelope
+    env.attackTime(m_envDuration);
+    env.releaseTime(m_envDuration);
+    env.keyOn();
 
     fun void listen(int l) {
         if (l == 1) {
-            1 => listenOn;
+            1 => m_listen;
             spork ~ listening();
         }
         if (l == 0) {
-            0 => listenOn;
+            0 => m_listen;
         }
     }
 
+    fun void setInfluence(float i) {
+        i => m_influence;
+    }
+
+    fun void setMaxBufferLength(dur l) {
+        l => m_maxBufferLength;
+    }
+
     fun void listening() {
-        while (listenOn) {
-            <<< "!" >>>;
-            Math.random2f(0.1, 1.0)::second => dur bufferLength;
-            record(bufferLength);
-            playInReverse(bufferLength);
+        while (m_listen) {
+            if (m_influence >= 0.01) {
+                Math.random2f(0.1, m_influence) => float scale;
+                scale * m_maxBufferLength => dur bufferLength;
+                record(bufferLength);
+                playInReverse(bufferLength);
+                m_maxTimeBetween * Math.fabs(1.0 - m_influence) => now;
+            }
+            1::samp => now;
         }
     }
 
@@ -36,10 +58,18 @@ public class RandomReverse extends Chubgraph {
     }
 
     fun void playInReverse(dur bufferLength) {
+        if (bufferLength < m_envDuration) {
+            m_envDuration * 2 => bufferLength;
+        }
+        env.keyOff();
         mic.play(1);
         mic.playPos(bufferLength);
         mic.rate(-1.0);
-        bufferLength => now;
+        mic.rampUp(m_envDuration);
+        bufferLength - m_envDuration => now;
+        mic.rampDown(m_envDuration);
+        env.keyOn();
+        m_envDuration => now;
         mic.play(0);
     }
 
@@ -50,6 +80,7 @@ public class RandomReverse extends Chubgraph {
 RandomReverse rr;
 adc => rr => dac;
 
+rr.setInfluence(1.0);
 rr.listen(1);
 
 while (true ) {

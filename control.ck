@@ -46,7 +46,7 @@ PitchedNoise ptchNois[NUM_MICS];
 // analyzing classes
 PitchTrack ptchTrk[NUM_MICS];
 Decibel decib[NUM_MICS];
-
+RandomReverse rev[NUM_MICS];
 
 Gain master => dac;
 
@@ -59,7 +59,9 @@ for (0 => int i; i < NUM_MICS; i++) {
     ptchTrk[i].frame(64);
     ptchTrk[i].overlap(1);
 
-    adc.chan(i) => dec[i] => master;
+    rev[i].listen(1);
+
+    adc.chan(i) => dec[i] => rev[i] => master;
     ptchNois[i] => master;
     adc.chan(i) => ptchTrk[i] => blackhole;
     adc.chan(i) => decib[i];
@@ -77,6 +79,7 @@ fun void updateAudio() {
         // gain control update
         dec[i].gain(k[i * 2].getEasedScaledVal());
         ptchNois[i].gain(k[i * 2 + 1].getScaledVal());
+        rev[i].influence(k[i * 2 + 1].getScaledVal());
     }
 }
 
