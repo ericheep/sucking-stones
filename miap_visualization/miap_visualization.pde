@@ -16,9 +16,9 @@ void setup() {
   background(0);
   frameRate(60);
   //fullScreen();
-  size(1000, 1000);
+  size(800, 800);
   
-  nodes = new Node[18];
+  nodes = new Node[100];
   for (int i = 0; i < nodes.length; i++) {
      nodes[i] = new Node(); 
   }
@@ -66,7 +66,7 @@ void draw() {
   rect(0, 0, width, height);
   stroke(330, 360, 360);
   ellipse(posX * width, posY * height, 10, 10);
-  for (int i = 0; i < 18; i++) {
+  for (int i = 0; i < nodes.length; i++) {
      nodes[i].update(120); 
   }
   triset.update(posX * width, posY * height);

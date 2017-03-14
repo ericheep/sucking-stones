@@ -73,9 +73,9 @@ public class Decay extends Chubgraph {
 adc => Decay exp => dac;
 adc => Gain g => dac;
 
-exp.decays(64);
-exp.length(4::second);
-exp.feedback(1.00);
+exp.decays(16);
+exp.length(16::second);
+exp.feedback(0.50);
 exp.mix(1.0);
 
 while (true) {

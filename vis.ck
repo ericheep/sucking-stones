@@ -52,8 +52,8 @@ m.addTriset(6, 7, 8);
 
 SinOsc sin1 => blackhole;
 SinOsc sin2 => blackhole;
-sin1.freq(0.1512/3);
-sin2.freq(0.27/3);
+sin1.freq(0.1512);
+sin2.freq(0.27);
 
 fun void oscSender(float xPos, float yPos) {
     out.start("/pos");
