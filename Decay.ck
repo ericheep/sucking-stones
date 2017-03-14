@@ -1,4 +1,5 @@
 // Decay.ck
+// March 13th, 2017
 // Eric Heep
 
 
@@ -70,6 +71,7 @@ public class Decay extends Chubgraph {
     }
 }
 
+/*
 adc => Decay exp => dac;
 adc => Gain g => dac;
 
@@ -81,3 +83,4 @@ exp.mix(1.0);
 while (true) {
     1::second => now;
 }
+*/
