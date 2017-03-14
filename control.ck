@@ -57,7 +57,7 @@ for (0 => int i; i < NUM_MICS; i++) {
     dec[i].mix(1.0);
 
     ptchTrk[i].frame(64);
-    //ptchTrk[i].overlap(1);
+    ptchTrk[i].overlap(1);
 
     adc.chan(i) => dec[i] => master;
     ptchNois[i] => master;
