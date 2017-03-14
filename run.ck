@@ -12,6 +12,7 @@ Machine.add(me.dir() + "Decibel.ck");
 Machine.add(me.dir() + "Decay.ck");
 Machine.add(me.dir() + "PitchedNoise.ck");
 Machine.add(me.dir() + "RandomReverse.ck");
+Machine.add(me.dir() + "BufferGrabber.ck");
 
 // midi value
 Machine.add(me.dir() + "MIDIValue.ck");

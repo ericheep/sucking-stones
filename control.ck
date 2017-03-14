@@ -47,6 +47,7 @@ PitchedNoise ptchNois[NUM_MICS];
 PitchTrack ptchTrk[NUM_MICS];
 Decibel decib[NUM_MICS];
 RandomReverse rev[NUM_MICS];
+BufferGrabber buf[NUM_MICS];
 
 Gain master => dac;
 
@@ -61,25 +62,49 @@ for (0 => int i; i < NUM_MICS; i++) {
 
     rev[i].listen(1);
 
-    adc.chan(i) => dec[i] => rev[i] => master;
-    ptchNois[i] => master;
     adc.chan(i) => ptchTrk[i] => blackhole;
+
+    adc.chan(i) => buf[i] => rev[i];
+    adc.chan(i) => dec[i] => rev[i];
     adc.chan(i) => decib[i];
+
+    rev[i] => ptchNoise[i];
+    rev[i] => master;
+    ptchNois[i] => master;
 }
 
 // control audio -~-~-~-~-~-~-~
+
+30 => int decibelThreshold;
+4 => int minDecays;
+32 => int maxDecays;
+
+1.0/60.0 => float decibelNormalizer;
+maxDecays - minDecays => int decayRange;
 
 fun void updateAudio() {
     for (0 => int i; i < NUM_MICS; i++) {
         // audio processing update
         ptchNois[i].setFreq(ptchTrk[i].get());
-        ptchNois[i].setInputGain(decib[i].decibel()/60.0);
+        ptchNois[i].setInputGain(decib[i].decibel() * decibelNormalizer);
 
+        // decay controls
+        k[i * 2].getEasedScaledVal() => float decKnob;
+        dec[i].gain(decKnob);
+        dec[i].((decKnob * decayRange + minDecays)$int);
 
-        // gain control update
-        dec[i].gain(k[i * 2].getEasedScaledVal());
-        ptchNois[i].gain(k[i * 2 + 1].getScaledVal());
-        rev[i].influence(k[i * 2 + 2].getScaledVal());
+        // reverse controls
+        k[i * 2 + 1].getEasedScaledVal() => float revKnob;
+        rev[i].setInfluence(revKnob);
+        rev[i].setReverseGain(revKnob);
+
+        // noise controls
+        ptchNois[i].gain(s[i * 2 + 1].getEasedScaledVal());
+
+        // buffer control
+        if (decib[i].decibel() > decibelThreshold) {
+            buf[i].triggerGrab();
+        }
     }
 }
 

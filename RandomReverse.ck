@@ -4,7 +4,7 @@
 
 public class RandomReverse extends Chubgraph {
 
-    inlet => LiSa mic => outlet;
+    inlet => LiSa mic => Gain r => outlet;
     inlet => Gain g => ADSR env => outlet;
 
     0 => int m_listen;
@@ -30,6 +30,10 @@ public class RandomReverse extends Chubgraph {
 
     fun void setInfluence(float i) {
         i => m_influence;
+    }
+
+    fun void setReverseGain(float g) {
+        r.gain(g);
     }
 
     fun void setMaxBufferLength(dur l) {
