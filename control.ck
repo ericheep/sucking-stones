@@ -41,7 +41,11 @@ fun void updateControl() {
 1 => int NUM_MICS;
 
 Decay dec[NUM_MICS];
-PitchTrack ptrk[NUM_MICS];
+PitchedNoise ptchNois[NUM_MICS];
+
+// analyzing classes
+PitchTrack ptchTrk[NUM_MICS];
+Decibel decib[NUM_MICS];
 
 
 Gain master => dac;
@@ -52,8 +56,8 @@ for (0 => int i; i < NUM_MICS; i++) {
     dec[i].feedback(0.5);
     dec[i].mix(1.0);
 
-    ptrik[i].frame(512);
-    ptrik[i].overlap(4);
+    ptchTrk[i].frame(512);
+    ptchTrk[i].overlap(4);
 
     adc.chan(i) => dec[i] => master;
 }
@@ -63,6 +67,7 @@ for (0 => int i; i < NUM_MICS; i++) {
 fun void updateAudio() {
     for (0 => int i; i < NUM_MICS; i++) {
         dec[i].gain(k[i * 2].getEasedScaledVal());
+        ptchNois[i].gain(k[(i + 1) * 2].getEasedScaledVal());
     }
 }
 
