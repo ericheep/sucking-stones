@@ -1,3 +1,8 @@
+// Eric Heep
+// March 14th, 2017
+// PitchedNoise.ck
+
+
 public class PitchedNoise extends Chubgraph {
 
     inlet => Noise nois => LPF lp => HPF hp => outlet;
