@@ -60,6 +60,9 @@ for (0 => int i; i < NUM_MICS; i++) {
     ptchTrk[i].overlap(4);
 
     adc.chan(i) => dec[i] => master;
+
+    adc.chan(i) => ptchTrk[i];
+    adc.chan(i) => decib[i];
 }
 
 // control audio -~-~-~-~-~-~-~
