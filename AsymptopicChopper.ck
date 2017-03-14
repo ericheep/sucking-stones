@@ -1,42 +1,58 @@
 // Eric Heep
 // March 14th, 2017
-// AsymptopicChopper.ck
+// RandomReverse.ck
 
-public class AsymptopicChopper extends Chubgraph {
+public class RandomReverse extends Chubgraph {
 
     inlet => LiSa mic => outlet;
 
-    int recOn;
+    int listenOn;
 
-    fun void record(int rcrd) {
-        if (rcrd == 1) {
-            spork ~ recording();
+    fun void listen(int l) {
+        if (l == 1) {
+            1 => listenOn;
+            spork ~ listening();
         }
-        if (rcrd == 0) {
-            0 => recOn;
+        if (l == 0) {
+            0 => listenOn;
         }
     }
 
-    fun void recording() {
-        1 => recOn;
-        mic.duration(buffer);
+    fun void listening() {
+        while (listenOn) {
+            <<< "!" >>>;
+            Math.random2f(0.1, 1.0)::second => dur bufferLength;
+            record(bufferLength);
+            playInReverse(bufferLength);
+        }
+    }
+
+    fun void record(dur bufferLength) {
+        mic.duration(bufferLength);
         mic.playPos(0::samp);
         mic.record(1);
-        now => time x;
-        while (recOn == 1) {
-            samp => now;
-        }
-        now => time y;
-        y - x => recTime;
+        bufferLength => now;
         mic.record(0);
     }
 
-    fun void play(int ply) {
-        if (ply == 1) {
-            1 => playOn;
-            spork ~
-        }
+    fun void playInReverse(dur bufferLength) {
+        mic.play(1);
+        mic.playPos(bufferLength);
+        mic.rate(-1.0);
+        bufferLength => now;
+        mic.play(0);
     }
 
 
 }
+
+/*
+RandomReverse rr;
+adc => rr => dac;
+
+rr.listen(1);
+
+while (true ) {
+    1::second => now;
+}
+*/
