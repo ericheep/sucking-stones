@@ -72,42 +72,9 @@ public class BufferGrabber extends Chubgraph {
     }
 }
 
+/*
 adc => BufferGrabber b => dac;
 
-b.triggerGrab();
-2::second => now;
-b.triggerGrab();
-2::second => now;
-b.triggerGrab();
-2::second => now;
-b.triggerGrab();
-2::second => now;
-b.triggerGrab();
-2::second => now;
-b.triggerGrab();
-2::second => now;
-b.triggerGrab();
-2::second => now;
-b.triggerGrab();
-2::second => now;
-b.triggerGrab();
-2::second => now;
-b.triggerGrab();
-2::second => now;
-b.triggerGrab();
-2::second => now;
-b.triggerGrab();
-2::second => now;
-b.triggerGrab();
-2::second => now;
-b.triggerGrab();
-2::second => now;
-b.triggerGrab();
-2::second => now;
-b.triggerGrab();
-2::second => now;
-b.triggerGrab();
-2::second => now;
 b.triggerGrab();
 2::second => now;
 
@@ -116,6 +83,5 @@ b.playRandomChunks(1);
 while (true) {
     second => now;
 }
-
-
+*/
 

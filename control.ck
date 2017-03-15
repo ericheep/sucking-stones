@@ -21,8 +21,8 @@ Slider s[NUM_SLIDERS];
 Knob k[NUM_KNOBS];
 
 for (0 => int i; i < NUM_SLIDERS; i++) {
-    s[i].setEasingIncrement(0.00005);
-    k[i].setEasingIncrement(0.00005);
+    s[i].setEasingIncrement(0.0005);
+    k[i].setEasingIncrement(0.0005);
 }
 
 1::ms => dur updateDur;
@@ -38,96 +38,139 @@ fun void updateControl() {
 
 // audio -~-~-~-~-~-~-~
 
-1 => int NUM_MICS;
+4 => int NUM_MICS;
 
+HPF hp[NUM_MICS];
 Decay dec[NUM_MICS];
 PitchedNoise ptchNois[NUM_MICS];
-
-// analyzing classes
-PitchTrack ptchTrk[NUM_MICS];
-Decibel decib[NUM_MICS];
 RandomReverse rev[NUM_MICS];
 BufferGrabber buf[NUM_MICS];
 GrainStretch str[NUM_MICS];
 
-Gain master => dac;
+// analyzing classes
+PitchTrack ptchTrk;
+Decibel decib[NUM_MICS];
+
+Gain in[NUM_MICS];
+Gain out[NUM_MICS];
 
 for (0 => int i; i < NUM_MICS; i++) {
     dec[i].decays(16);
-    dec[i].length(8::second);
+    dec[i].length(6::second);
     dec[i].feedback(0.5);
     dec[i].mix(1.0);
 
-    ptchTrk[i].frame(64);
-    ptchTrk[i].overlap(1);
+    ptchTrk.frame(64);
+    ptchTrk.overlap(1);
 
     rev[i].listen(1);
 
-    adc.chan(i) => ptchTrk[i] => blackhole;
+    // inputs in
+    adc.chan(i) => in[i];
+    in[i].gain(1.0);
 
-    adc.chan(i) => buf[i] => rev[i];
-    adc.chan(i) => dec[i] => rev[i];
-    adc.chan(i) => decib[i];
+    // analyzing classes
+    in[i] => decib[i];
+    in[i] => ptchTrk => blackhole;
 
-    rev[i] => str[i] => master;
-    rev[i] => ptchNoise[i];
-    rev[i] => master;
-    ptchNois[i] => master;
+    // sound chain
+    in[i] => rev[i] => dec[i] => str[i];
+    in[i] => buf[i];
+
+    rev[i] => out[i];
+    dec[i] => out[i];
+    str[i] => out[i];
+    ptchNois[i] => out[i];
+    buf[i] => out[i];
+
+    out[i] => dac.chan(i);
 }
 
 // control audio -~-~-~-~-~-~-~
 
 30 => int decibelThreshold;
 4 => int minDecays;
-32 => int maxDecays;
+16 => int maxDecays;
 
 1.0/60.0 => float decibelNormalizer;
 maxDecays - minDecays => int decayRange;
 
 0 => int stretchLatch;
+0 => int stretchVal;
+
+0 => int chunkLatch;
+0 => int chunkVal;
+
+0 => int recChunkLatch;
+0 => int recChunkVal;
 
 fun void updateAudio() {
     for (0 => int i; i < NUM_MICS; i++) {
-        // audio processing update
-        ptchNois[i].setFreq(ptchTrk[i].get());
-        ptchNois[i].setInputGain(decib[i].decibel() * decibelNormalizer);
-
-        // decay controls
-        k[i * 2].getEasedScaledVal() => float decKnob;
-        dec[i].gain(decKnob);
-        dec[i].((decKnob * decayRange + minDecays)$int);
+        // input gain controls
+        s[i * 2].getScaledVal() => float gainKnob;
+        in[i].gain(gainKnob);
 
         // reverse controls
-        k[i * 2 + 1].getEasedScaledVal() => float revKnob;
+        k[i * 2].getScaledVal() => float revKnob;
         rev[i].setInfluence(revKnob);
         rev[i].setReverseGain(revKnob);
 
+        // decay controls
+        k[i * 2 + 1].getScaledVal() => float decayGain;
+        dec[i].gain(decayGain);
+        // dec[i].decays((decKnob * decayRange + minDecays)$int);
+
+        // audio processing update
+        ptchNois[i].setFreq(ptchTrk.get());
+        ptchNois[i].setInputGain(decib[i].decibel() * decibelNormalizer);
+
+        // noise controls
+        s[i * 2 + 1].getEasedScaledVal() => float pitchedGain;
+        ptchNois[i].gain(pitchedGain);
+
         // add a button to turn on stretching
-        if (stretchSwitch == 0) { // && button > 127) {
-            str[i].stretch(1);
+        if (stretchLatch == 0 && n.s[i * 2] == 0) {
             1 => stretchLatch;
-        } else if (stretchSwitch == 1) { // && button == 0) {
-            str[i].stretch(0);
+            <<< "Stretching Chunks:", i, stretchVal,  n.s[i * 2], "" >>>;
+            (stretchVal + 1) % 2 => stretchVal;
+            str[i].stretch(stretchVal);
+        }
+        if (stretchLatch == 1 && n.s[i * 2] > 0) {
             0 => stretchLatch;
         }
 
-        // noise controls
-        ptchNois[i].gain(s[i * 2 + 1].getEasedScaledVal());
+        // add a button to playing chunks
+        if (chunkLatch == 0 && n.m[i * 2] == 0) {
+            <<< "Playing Chunks:", i, chunkVal, "" >>>;
+            (chunkVal + 1) % 2 => chunkVal;
+            buf[i].playRandomChunks(chunkVal);
+            1 => chunkLatch;
+        }
+        if (chunkLatch == 1 && n.m[i * 2] > 0) {
+            0 => chunkLatch;
+        }
 
-        // buffer control
-        if (decib[i].decibel() > decibelThreshold) {
+        // add a button to record chunks
+        if (recChunkLatch == 0 && n.r[i * 2] == 0) {
+            <<< "Recording Chunks:", i, recChunkVal, "" >>>;
+            (recChunkVal + 1) % 2 => recChunkVal;
+            1 => recChunkLatch;
+        }
+        if (recChunkLatch == 1 && n.r[i * 2] > 0) {
+            0 => recChunkLatch;
+        }
+
+        if (chunkVal) {
             buf[i].triggerGrab();
         }
     }
 }
 
-master => dac;
-
 while (true) {
     updateControl();
     updateAudio();
 
-    <<< decib[0].decibel(), ptchTrk[0].get(), k[1].getEasedScaledVal() >>>;
+    //<<< "Gains:", s[0].getScaledVal(), "Random Reverse:", k[0].getScaledVal(), " | Pitched Noise:", s[1].getScaledVal(), "Decay:", k[1].getScaledVal() >>>;
 
     updateDur => now;
 }

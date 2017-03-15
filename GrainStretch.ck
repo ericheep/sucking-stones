@@ -4,11 +4,11 @@
 
 public class GrainStretch extends Chubgraph {
 
-    inlet => LiSa mic => ADSR env => outlet;
+    inlet => LiSa mic => ADSR env => ADSR arc => outlet;
 
     0 => int m_stretching;
     0 => int m_whichMic;
-    3.0::second => dur m_duration;
+    2.0::second => dur m_duration;
 
     fun void stretch(int s) {
         if (s == 1) {
@@ -20,11 +20,22 @@ public class GrainStretch extends Chubgraph {
         }
     }
 
+    fun void cueArc(dur envLength) {
+        arc.attackTime(envLength/2.0);
+        arc.releaseTime(envLength/2.0);
+        arc.keyOn();
+        envLength/2.0 => now;
+        arc.keyOff();
+        envLength/2.0 => now;
+    }
+
     fun void stretching() {
         Math.random2f(0.5, 1.0) * m_duration => dur length;
         while (m_stretching) {
             recordVoice(length);
-            stretchVoice(length, Math.random2f(0.2, 0.7), 64);
+            (1.0/Math.random2f(0.2, 0.7)) * m_duration => dur stretchLength;
+            spork ~ cueArc(stretchLength);
+            stretchVoice(length, stretchLength, 64);
         }
     }
 
@@ -36,8 +47,8 @@ public class GrainStretch extends Chubgraph {
     }
 
     // all the sound stuff we're doing
-    fun void stretchVoice(dur duration, float rate, int windows) {
-        (duration * (1.0/rate))/windows => dur grain;
+    fun void stretchVoice(dur duration, dur stretchRate, int windows) {
+        stretchRate/windows => dur grain;
         grain * 0.5 => dur halfGrain;
 
         // for some reason if you try to put a sample
@@ -77,6 +88,7 @@ public class GrainStretch extends Chubgraph {
 }
 
 adc => GrainStretch g => dac;
+adc => Gain gr => dac;
 
 g.stretch(1);
 

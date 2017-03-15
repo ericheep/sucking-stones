@@ -2,16 +2,16 @@
 // March 13th, 2017
 // Eric Heep
 
-
 public class Decay extends Chubgraph {
 
     Echo ech[0];
 
-    int m_numEchoes;
+    int m_numDecays;
     float m_mix;
     float m_feedback;
 
     fun void decays(int numDecays) {
+        numDecays => m_numDecays;
         if (ech.size() > 0) {
             unchainDecays();
         }
