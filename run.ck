@@ -13,6 +13,7 @@ Machine.add(me.dir() + "Decay.ck");
 Machine.add(me.dir() + "PitchedNoise.ck");
 Machine.add(me.dir() + "RandomReverse.ck");
 Machine.add(me.dir() + "BufferGrabber.ck");
+Machine.add(me.dir() + "GrainStretch.ck");
 
 // midi value
 Machine.add(me.dir() + "MIDIValue.ck");

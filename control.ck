@@ -48,6 +48,7 @@ PitchTrack ptchTrk[NUM_MICS];
 Decibel decib[NUM_MICS];
 RandomReverse rev[NUM_MICS];
 BufferGrabber buf[NUM_MICS];
+GrainStretch str[NUM_MICS];
 
 Gain master => dac;
 
@@ -68,6 +69,7 @@ for (0 => int i; i < NUM_MICS; i++) {
     adc.chan(i) => dec[i] => rev[i];
     adc.chan(i) => decib[i];
 
+    rev[i] => str[i] => master;
     rev[i] => ptchNoise[i];
     rev[i] => master;
     ptchNois[i] => master;
@@ -81,6 +83,8 @@ for (0 => int i; i < NUM_MICS; i++) {
 
 1.0/60.0 => float decibelNormalizer;
 maxDecays - minDecays => int decayRange;
+
+0 => int stretchLatch;
 
 fun void updateAudio() {
     for (0 => int i; i < NUM_MICS; i++) {
@@ -97,6 +101,15 @@ fun void updateAudio() {
         k[i * 2 + 1].getEasedScaledVal() => float revKnob;
         rev[i].setInfluence(revKnob);
         rev[i].setReverseGain(revKnob);
+
+        // add a button to turn on stretching
+        if (stretchSwitch == 0) { // && button > 127) {
+            str[i].stretch(1);
+            1 => stretchLatch;
+        } else if (stretchSwitch == 1) { // && button == 0) {
+            str[i].stretch(0);
+            0 => stretchLatch;
+        }
 
         // noise controls
         ptchNois[i].gain(s[i * 2 + 1].getEasedScaledVal());
