@@ -6,6 +6,8 @@ public class Decay extends Chubgraph {
 
     Echo ech[0];
 
+    dur m_len;
+
     int m_numDecays;
     float m_mix;
     float m_feedback;
@@ -20,6 +22,12 @@ public class Decay extends Chubgraph {
 
         chainDecays();
         inlet => outlet;
+    }
+
+    fun void decayGain(float f) {
+        for (int i; i < ech.size() - 1; i++) {
+            ech[i].gain(f);
+        }
     }
 
     fun void chainDecays() {
@@ -40,6 +48,12 @@ public class Decay extends Chubgraph {
     }
 
     fun void length(dur len) {
+        if (len == m_len) {
+            return;
+        }
+
+        len => m_len;
+
         ech.size()$float => float div;
         len/div => dur beatTime;
 

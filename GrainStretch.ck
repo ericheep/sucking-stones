@@ -8,7 +8,7 @@ public class GrainStretch extends Chubgraph {
 
     0 => int m_stretching;
     0 => int m_whichMic;
-    2.0::second => dur m_duration;
+    2.0::second => dur m_length;
 
     fun void stretch(int s) {
         if (s == 1) {
@@ -20,27 +20,31 @@ public class GrainStretch extends Chubgraph {
         }
     }
 
-    fun void cueArc(dur envLength) {
-        arc.attackTime(envLength/2.0);
-        arc.releaseTime(envLength/2.0);
+    fun void length(dur l) {
+        l => m_length;
+    }
+
+    fun void cueArc(dur bufferLength) {
+        bufferLength/16.0 => dur envLength;
+        arc.attackTime(envLength);
+        arc.releaseTime(envLength);
         arc.keyOn();
-        envLength/2.0 => now;
+        bufferLength - envLength => now;
         arc.keyOff();
-        envLength/2.0 => now;
+        envLength => now;
     }
 
     fun void stretching() {
-        Math.random2f(0.5, 1.0) * m_duration => dur length;
         while (m_stretching) {
-            recordVoice(length);
-            (1.0/Math.random2f(0.2, 0.7)) * m_duration => dur stretchLength;
+            recordVoice(m_length);
+            m_length * Math.random2f(2.0, 4.0) => dur stretchLength;
             spork ~ cueArc(stretchLength);
-            stretchVoice(length, stretchLength, 64);
+            stretchVoice(m_length, stretchLength, 64);
         }
     }
 
     fun void recordVoice(dur duration) {
-        mic.duration(duration * 4);
+        mic.duration(duration);
         mic.record(1);
         duration => now;
         mic.record(0);
@@ -57,9 +61,11 @@ public class GrainStretch extends Chubgraph {
             return;
         }
 
+        halfGrain/32.0 => dur halfGrainEnv;
+
         // envelope parameters
-        env.attackTime(halfGrain);
-        env.releaseTime(halfGrain);
+        env.attackTime(halfGrainEnv);
+        env.releaseTime(halfGrainEnv);
 
         halfGrain/samp => float halfGrainSamples;
         ((duration/samp)$int)/windows => int sampleIncrement;
@@ -76,7 +82,7 @@ public class GrainStretch extends Chubgraph {
                 env.keyOn();
                 halfGrain => now;
                 env.keyOff();
-                halfGrain => now;
+                halfGrain - halfGrainEnv => now;
             }
             else {
                 grain => now;
@@ -87,6 +93,7 @@ public class GrainStretch extends Chubgraph {
     }
 }
 
+/*
 adc => GrainStretch g => dac;
 adc => Gain gr => dac;
 
@@ -95,3 +102,4 @@ g.stretch(1);
 while(true) {
     samp => now;
 }
+*/

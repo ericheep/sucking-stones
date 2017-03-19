@@ -43,7 +43,7 @@ public class RandomReverse extends Chubgraph {
     fun void listening() {
         while (m_listen) {
             if (m_influence >= 0.01) {
-                Math.random2f(0.1, m_influence) => float scale;
+                Math.random2f(0.1, m_influence * 0.75) => float scale;
                 scale * m_maxBufferLength => dur bufferLength;
                 record(bufferLength);
                 playInReverse(bufferLength);

@@ -38,65 +38,137 @@ fun void updateControl() {
 
 // audio -~-~-~-~-~-~-~
 
-4 => int NUM_MICS;
+2 => int NUM_MICS;
 
 HPF hp[NUM_MICS];
 Decay dec[NUM_MICS];
-PitchedNoise ptchNois[NUM_MICS];
 RandomReverse rev[NUM_MICS];
-BufferGrabber buf[NUM_MICS];
 GrainStretch str[NUM_MICS];
-
-// analyzing classes
-PitchTrack ptchTrk;
-Decibel decib[NUM_MICS];
+AsymptopicChopper asy[NUM_MICS];
+LoopingChopper chp[NUM_MICS];
 
 Gain in[NUM_MICS];
+ADSR panEnv[NUM_MICS];
 Gain out[NUM_MICS];
+
+10::ms => dur panEnvDuration;
 
 for (0 => int i; i < NUM_MICS; i++) {
     dec[i].decays(16);
     dec[i].length(6::second);
     dec[i].feedback(0.5);
     dec[i].mix(1.0);
-
-    ptchTrk.frame(64);
-    ptchTrk.overlap(1);
+    dec[i].decayGain(0.0);
 
     rev[i].listen(1);
+    asy[i].listen(1);
+    chp[i].listen(1);
+
+    str[i].gain(1.0);
 
     // inputs in
     adc.chan(i) => in[i];
-    in[i].gain(1.0);
-
-    // analyzing classes
-    in[i] => decib[i];
-    in[i] => ptchTrk => blackhole;
 
     // sound chain
-    in[i] => rev[i] => dec[i] => str[i];
-    in[i] => buf[i];
+    in[i] => rev[i] => dec[i];
+    dec[i] => asy[i];
+    dec[i] => str[i];
+    dec[i] => chp[i];
 
-    rev[i] => out[i];
     dec[i] => out[i];
+    asy[i] => out[i];
+    chp[i] => out[i];
+    rev[i] => out[i];
     str[i] => out[i];
-    ptchNois[i] => out[i];
-    buf[i] => out[i];
 
-    out[i] => dac.chan(i);
+    out[i] => panEnv[i];
+    panEnv[i].attackTime(panEnvDuration);
+    panEnv[i].releaseTime(panEnvDuration);
+    panEnv[i].keyOn();
+
+    panEnv[i] => dac.chan(i);
 }
+
+
+0.0 => float panningFrequency;
+
+fun void shufflePan(int arr[]) {
+    for (NUM_MICS - 1 => int i; i > 0; i--) {
+        Math.random2(0, NUM_MICS - 1) => int j;
+        arr[j] => int temp;
+        arr[i] => arr[j];
+        temp => arr[i];
+    }
+
+    for (0 => int i; i < NUM_MICS; i++) {
+        panEnv[i].keyOff();
+    }
+
+    panEnvDuration => now;
+
+    for (0 => int i; i < NUM_MICS; i++) {
+        panEnv[i] =< dac.chan(i);
+        panEnv[i] => dac.chan(arr[i]);
+        panEnv[i].keyOn();
+    }
+}
+
+fun void orderPan(int arr[]) {
+    for (0 => int i; i < NUM_MICS; i++) {
+        panEnv[i].keyOff();
+    }
+
+    panEnvDuration => now;
+
+    for (0 => int i; i < NUM_MICS; i++) {
+        panEnv[i] =< dac.chan(arr[i]);
+        panEnv[i] => dac.chan(i);
+        panEnv[i].keyOn();
+    }
+}
+
+fun void randomPan() {
+    Math.random2f(0.1, 1.0) * 4::second => dur panLength;
+    int arr[NUM_MICS];
+    for (0 => int i; i < NUM_MICS; i++) {
+        i => arr[i];
+    }
+    while (true) {
+        panningFrequency => float freq;
+        (1.0 - freq) + panLength + panEnvDuration => dur panLength;
+        if(freq > 0.1) {
+            orderPan(arr);
+        }
+
+        panLength => now;
+
+        if(freq > 0.1) {
+            shufflePan(arr);
+        }
+        panLength => now;
+    }
+}
+
+spork ~ randomPan();
 
 // control audio -~-~-~-~-~-~-~
 
 30 => int decibelThreshold;
-4 => int minDecays;
-16 => int maxDecays;
+1::second => dur minDecayLength;
+4::second => dur maxDecayLength;
 
-1.0/60.0 => float decibelNormalizer;
-maxDecays - minDecays => int decayRange;
+0.25::second => dur minAsymptopicLength;
+1::second => dur maxAsymptopicLength;
+
+0.5::second => dur minStretchLength;
+4.5::second => dur maxStretchLength;
+
+
+maxDecayLength - minDecayLength => dur decayLengthRange;
+maxAsymptopicLength - minAsymptopicLength => dur asymptopicLengthRange;
+maxStretchLength - minStretchLength => dur stretchLengthRange;
 
 0 => int stretchLatch;
-0 => int stretchVal;
 
 0 => int chunkLatch;
 0 => int chunkVal;
@@ -107,61 +179,44 @@ maxDecays - minDecays => int decayRange;
 fun void updateAudio() {
     for (0 => int i; i < NUM_MICS; i++) {
         // input gain controls
-        s[i * 2].getScaledVal() => float gainKnob;
-        in[i].gain(gainKnob);
+        s[i].getEasedScaledVal() => float inGainKnob;
+        in[i].gain(inGainKnob);
+
+        s[i + 4].getEasedScaledVal() => float outGainKnob;
+        out[i].gain(outGainKnob);
 
         // reverse controls
-        k[i * 2].getScaledVal() => float revKnob;
+        k[0].getScaledVal() => float revKnob;
         rev[i].setInfluence(revKnob);
         rev[i].setReverseGain(revKnob);
 
         // decay controls
-        k[i * 2 + 1].getScaledVal() => float decayGain;
-        dec[i].gain(decayGain);
-        // dec[i].decays((decKnob * decayRange + minDecays)$int);
+        k[1].getScaledVal() => float decayKnob;
+        dec[i].decayGain(decayKnob);
+        dec[i].length((1.0 - decayKnob) * decayLengthRange + minDecayLength);
 
-        // audio processing update
-        ptchNois[i].setFreq(ptchTrk.get());
-        ptchNois[i].setInputGain(decib[i].decibel() * decibelNormalizer);
+        k[2].getEasedScaledVal() => float asyKnob;
+        asy[i].gain(asyKnob);
+        asy[i].length(asyKnob * asymptopicLengthRange + minAsymptopicLength);
 
-        // noise controls
-        s[i * 2 + 1].getEasedScaledVal() => float pitchedGain;
-        ptchNois[i].gain(pitchedGain);
+        k[3].getEasedScaledVal() => float chpKnob;
+        chp[i].gain(chpKnob);
+        chp[i].density(chpKnob);
 
         // add a button to turn on stretching
-        if (stretchLatch == 0 && n.s[i * 2] == 0) {
+        k[4].getScaledVal() => float strKnob;
+        str[i].length(strKnob * stretchLengthRange + minStretchLength);
+
+        k[7].getScaledVal() => panningFrequency;
+
+        if (stretchLatch == 0 && strKnob > 0.1) {
             1 => stretchLatch;
-            <<< "Stretching Chunks:", i, stretchVal,  n.s[i * 2], "" >>>;
-            (stretchVal + 1) % 2 => stretchVal;
-            str[i].stretch(stretchVal);
+            str[i].stretch(1);
         }
-        if (stretchLatch == 1 && n.s[i * 2] > 0) {
+
+        if (stretchLatch == 1 && strKnob < 0.1) {
             0 => stretchLatch;
-        }
-
-        // add a button to playing chunks
-        if (chunkLatch == 0 && n.m[i * 2] == 0) {
-            <<< "Playing Chunks:", i, chunkVal, "" >>>;
-            (chunkVal + 1) % 2 => chunkVal;
-            buf[i].playRandomChunks(chunkVal);
-            1 => chunkLatch;
-        }
-        if (chunkLatch == 1 && n.m[i * 2] > 0) {
-            0 => chunkLatch;
-        }
-
-        // add a button to record chunks
-        if (recChunkLatch == 0 && n.r[i * 2] == 0) {
-            <<< "Recording Chunks:", i, recChunkVal, "" >>>;
-            (recChunkVal + 1) % 2 => recChunkVal;
-            1 => recChunkLatch;
-        }
-        if (recChunkLatch == 1 && n.r[i * 2] > 0) {
-            0 => recChunkLatch;
-        }
-
-        if (chunkVal) {
-            buf[i].triggerGrab();
+            str[i].stretch(0);
         }
     }
 }
@@ -170,7 +225,7 @@ while (true) {
     updateControl();
     updateAudio();
 
-    //<<< "Gains:", s[0].getScaledVal(), "Random Reverse:", k[0].getScaledVal(), " | Pitched Noise:", s[1].getScaledVal(), "Decay:", k[1].getScaledVal() >>>;
+    // <<< "In:", s[0].getScaledVal(), "Out:", s[4].getEasedScaledVal() >>>;
 
     updateDur => now;
 }

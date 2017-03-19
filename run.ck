@@ -5,14 +5,11 @@
 // communication class
 Machine.add(me.dir() + "NanoKontrol2.ck");
 
-// analyzing class
-Machine.add(me.dir() + "Decibel.ck");
-
 // audio classes
 Machine.add(me.dir() + "Decay.ck");
-Machine.add(me.dir() + "PitchedNoise.ck");
+Machine.add(me.dir() + "LoopingChopper.ck");
+Machine.add(me.dir() + "AsymptopicChopper.ck");
 Machine.add(me.dir() + "RandomReverse.ck");
-Machine.add(me.dir() + "BufferGrabber.ck");
 Machine.add(me.dir() + "GrainStretch.ck");
 
 // midi value
