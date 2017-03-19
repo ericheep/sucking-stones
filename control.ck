@@ -46,7 +46,9 @@ RandomReverse rev[NUM_MICS];
 GrainStretch str[NUM_MICS];
 AsymptopicChopper asy[NUM_MICS];
 LoopingChopper chp[NUM_MICS];
+Reich rch[NUM_MICS];
 
+ADSR rchEnv[NUM_MICS];
 Gain in[NUM_MICS];
 ADSR panEnv[NUM_MICS];
 Gain out[NUM_MICS];
@@ -65,6 +67,7 @@ for (0 => int i; i < NUM_MICS; i++) {
     chp[i].listen(1);
 
     str[i].gain(1.0);
+    rch[i].speed(1.0);
 
     // inputs in
     adc.chan(i) => in[i];
@@ -74,16 +77,21 @@ for (0 => int i; i < NUM_MICS; i++) {
     dec[i] => asy[i];
     dec[i] => str[i];
     dec[i] => chp[i];
+    in[i] => rch[i];
 
     dec[i] => out[i];
     asy[i] => out[i];
     chp[i] => out[i];
     rev[i] => out[i];
     str[i] => out[i];
+    rch[i] => rchEnv[i] => out[i];
 
     out[i] => panEnv[i];
+
     panEnv[i].attackTime(panEnvDuration);
     panEnv[i].releaseTime(panEnvDuration);
+    rchEnv[i].attackTime(2::second);
+    rchEnv[i].releaseTime(100::ms);
     panEnv[i].keyOn();
 
     panEnv[i] => dac.chan(i);
@@ -135,7 +143,9 @@ fun void randomPan() {
     }
     while (true) {
         panningFrequency => float freq;
-        (1.0 - freq) + panLength + panEnvDuration => dur panLength;
+
+        (1.0 - freq) * panLength + panEnvDuration => dur panLength;
+
         if(freq > 0.1) {
             orderPan(arr);
         }
@@ -145,6 +155,7 @@ fun void randomPan() {
         if(freq > 0.1) {
             shufflePan(arr);
         }
+
         panLength => now;
     }
 }
@@ -175,6 +186,8 @@ maxStretchLength - minStretchLength => dur stretchLengthRange;
 
 0 => int recChunkLatch;
 0 => int recChunkVal;
+
+0 => int reichLatch;
 
 fun void updateAudio() {
     for (0 => int i; i < NUM_MICS; i++) {
@@ -207,6 +220,10 @@ fun void updateAudio() {
         k[4].getScaledVal() => float strKnob;
         str[i].length(strKnob * stretchLengthRange + minStretchLength);
 
+        // add a button to turn on stretching
+        k[5].getEasedScaledVal() => float rchKnob;
+        rch[i].gain(rchKnob);
+
         k[7].getScaledVal() => panningFrequency;
 
         if (stretchLatch == 0 && strKnob > 0.1) {
@@ -217,6 +234,21 @@ fun void updateAudio() {
         if (stretchLatch == 1 && strKnob < 0.1) {
             0 => stretchLatch;
             str[i].stretch(0);
+        }
+
+        if (reichLatch == 0 && n.r[5] > 0) {
+            1 => reichLatch;
+            rch[i].record(1);
+            rch[i].play(0);
+            rchEnv[i].keyOff();
+        }
+
+        if (reichLatch == 1 && n.r[5] == 0) {
+            0 => reichLatch;
+            rch[i].record(0);
+            rch[i].play(1);
+            rch[i].speed(1.0);
+            rchEnv[i].keyOn();
         }
     }
 }

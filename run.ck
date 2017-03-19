@@ -11,6 +11,7 @@ Machine.add(me.dir() + "LoopingChopper.ck");
 Machine.add(me.dir() + "AsymptopicChopper.ck");
 Machine.add(me.dir() + "RandomReverse.ck");
 Machine.add(me.dir() + "GrainStretch.ck");
+Machine.add(me.dir() + "Reich.ck");
 
 // midi value
 Machine.add(me.dir() + "MIDIValue.ck");
