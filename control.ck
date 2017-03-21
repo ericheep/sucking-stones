@@ -4,6 +4,10 @@
 
 NanoKontrol2 n;
 
+// breathing room -~-~-~-
+<<< "MIDI Ready", "" >>>;
+4::second => now;
+
 class Slider extends MIDIValue {
 
 }
@@ -21,8 +25,8 @@ Slider s[NUM_SLIDERS];
 Knob k[NUM_KNOBS];
 
 for (0 => int i; i < NUM_SLIDERS; i++) {
-    s[i].setEasingIncrement(0.0005);
-    k[i].setEasingIncrement(0.0005);
+    s[i].setEasingIncrement(0.005);
+    k[i].setEasingIncrement(0.005);
 }
 
 1::ms => dur updateDur;
@@ -36,69 +40,104 @@ fun void updateControl() {
     }
 }
 
+// breathing room -~-~-~
+100::ms => now;
+
 // audio -~-~-~-~-~-~-~
 
-2 => int NUM_MICS;
+4 => int NUM_MICS;
 
 HPF hp[NUM_MICS];
 Decay dec[NUM_MICS];
 RandomReverse rev[NUM_MICS];
-GrainStretch str[NUM_MICS];
 AsymptopicChopper asy[NUM_MICS];
 LoopingChopper chp[NUM_MICS];
-Reich rch[NUM_MICS];
 
-ADSR rchEnv[NUM_MICS];
-Gain in[NUM_MICS];
 ADSR panEnv[NUM_MICS];
+
+Gain in[NUM_MICS];
 Gain out[NUM_MICS];
 
 10::ms => dur panEnvDuration;
 
 for (0 => int i; i < NUM_MICS; i++) {
-    dec[i].decays(16);
-    dec[i].length(6::second);
-    dec[i].feedback(0.5);
+    dec[i].decays(6);
+    dec[i].length(3::second);
     dec[i].mix(1.0);
-    dec[i].decayGain(0.0);
+    dec[i].decayGain(1.0);
+    dec[i].feedback(0.0);
 
     rev[i].listen(1);
     asy[i].listen(1);
     chp[i].listen(1);
 
-    str[i].gain(1.0);
-    rch[i].speed(1.0);
-
     // inputs in
-    adc.chan(i) => in[i];
+    adc.chan(i) => hp[i] => in[i];
+    hp[i].freq(2000);
 
     // sound chain
     in[i] => rev[i] => dec[i];
     dec[i] => asy[i];
-    dec[i] => str[i];
     dec[i] => chp[i];
-    in[i] => rch[i];
 
     dec[i] => out[i];
     asy[i] => out[i];
     chp[i] => out[i];
     rev[i] => out[i];
-    str[i] => out[i];
-    rch[i] => rchEnv[i] => out[i];
 
-    out[i] => panEnv[i];
+    out[i] => panEnv[i] => dac.chan(i);
 
     panEnv[i].attackTime(panEnvDuration);
     panEnv[i].releaseTime(panEnvDuration);
-    rchEnv[i].attackTime(2::second);
-    rchEnv[i].releaseTime(100::ms);
     panEnv[i].keyOn();
 
-    panEnv[i] => dac.chan(i);
+    // breathing room -~-~-~-~-
+    <<< "Channel ~", i, "~ Connected", "" >>>;
 }
 
+// control audio -~-~-~-~-~-~-~
+
+0.25::second => dur minAsymptopicLength;
+1::second => dur maxAsymptopicLength;
+
+maxAsymptopicLength - minAsymptopicLength => dur asymptopicLengthRange;
+0 => int panLatch;
 
 0.0 => float panningFrequency;
+
+fun void updateAudio() {
+    for (0 => int i; i < NUM_MICS; i++) {
+        // input gain controls
+        s[i].getEasedScaledVal() => float inGainKnob;
+        in[i].gain(inGainKnob);
+
+        s[i + 4].getEasedScaledVal() => float outGainKnob;
+        out[i].gain(outGainKnob);
+
+        // reverse controls
+        k[0].getScaledVal() => float revKnob;
+        rev[i].setInfluence(revKnob);
+        rev[i].setReverseGain(revKnob);
+
+        // decay controls
+        k[1].getScaledVal() => float decayKnob;
+        dec[i].feedback(decayKnob);
+
+        k[2].getEasedScaledVal() => float asyKnob;
+        asy[i].gain(asyKnob);
+        asy[i].length(asyKnob * asymptopicLengthRange + minAsymptopicLength);
+
+        k[3].getEasedScaledVal() => float chpKnob;
+        chp[i].gain(chpKnob);
+        chp[i].density(chpKnob);
+
+        // add a button to turn on stretching
+        k[4].getScaledVal() => float panKnob;
+        panKnob => panningFrequency;
+
+        updatePrint(revKnob, decayKnob, asyKnob, chpKnob, panKnob);
+    }
+}
 
 fun void shufflePan(int arr[]) {
     for (NUM_MICS - 1 => int i; i > 0; i--) {
@@ -162,102 +201,58 @@ fun void randomPan() {
 
 spork ~ randomPan();
 
-// control audio -~-~-~-~-~-~-~
+// uiPrint, for sanity -~-~-~-~-~-~-~
 
-30 => int decibelThreshold;
-1::second => dur minDecayLength;
-4::second => dur maxDecayLength;
+string uiPrintOutput;
+string prevUiPrintOutput;
+["~", "*", "-"] @=> string possibilities[];
 
-0.25::second => dur minAsymptopicLength;
-1::second => dur maxAsymptopicLength;
+fun void updatePrint(float rev, float dec, float asy, float chp, float pan)
+{
+    string temp;
+    " | Rev: " + format(rev) + " " + uiFiller(rev) + " " +=> temp;
+    " Dec: " + format(dec) + " " + uiFiller(dec) + " " +=> temp;
+    " Asy: " + format(asy) + " " + uiFiller(asy) + " " +=> temp;
+    " Chp: " + format(chp) + " " + uiFiller(chp) + " " +=> temp;
+    " Pan: " + format(pan) + " " + uiFiller(pan) + " " + "|" +=> temp;
+    temp => uiPrintOutput;
+}
 
-0.5::second => dur minStretchLength;
-4.5::second => dur maxStretchLength;
-
-
-maxDecayLength - minDecayLength => dur decayLengthRange;
-maxAsymptopicLength - minAsymptopicLength => dur asymptopicLengthRange;
-maxStretchLength - minStretchLength => dur stretchLengthRange;
-
-0 => int stretchLatch;
-
-0 => int chunkLatch;
-0 => int chunkVal;
-
-0 => int recChunkLatch;
-0 => int recChunkVal;
-
-0 => int reichLatch;
-
-fun void updateAudio() {
-    for (0 => int i; i < NUM_MICS; i++) {
-        // input gain controls
-        s[i].getEasedScaledVal() => float inGainKnob;
-        in[i].gain(inGainKnob);
-
-        s[i + 4].getEasedScaledVal() => float outGainKnob;
-        out[i].gain(outGainKnob);
-
-        // reverse controls
-        k[0].getScaledVal() => float revKnob;
-        rev[i].setInfluence(revKnob);
-        rev[i].setReverseGain(revKnob);
-
-        // decay controls
-        k[1].getScaledVal() => float decayKnob;
-        dec[i].decayGain(decayKnob);
-        dec[i].length((1.0 - decayKnob) * decayLengthRange + minDecayLength);
-
-        k[2].getEasedScaledVal() => float asyKnob;
-        asy[i].gain(asyKnob);
-        asy[i].length(asyKnob * asymptopicLengthRange + minAsymptopicLength);
-
-        k[3].getEasedScaledVal() => float chpKnob;
-        chp[i].gain(chpKnob);
-        chp[i].density(chpKnob);
-
-        // add a button to turn on stretching
-        k[4].getScaledVal() => float strKnob;
-        str[i].length(strKnob * stretchLengthRange + minStretchLength);
-
-        // add a button to turn on stretching
-        k[5].getEasedScaledVal() => float rchKnob;
-        rch[i].gain(rchKnob);
-
-        k[7].getScaledVal() => panningFrequency;
-
-        if (stretchLatch == 0 && strKnob > 0.1) {
-            1 => stretchLatch;
-            str[i].stretch(1);
+fun string uiFiller(float f) {
+    string filler;
+    for (0 => int i; i < 28; i++) {
+        if (Math.random2f(0.0, 1.0) < f) {
+            possibilities[Math.random2(0, possibilities.size() - 1)] +=> filler;
         }
-
-        if (stretchLatch == 1 && strKnob < 0.1) {
-            0 => stretchLatch;
-            str[i].stretch(0);
+        else {
+            " " +=> filler;
         }
+    }
+    return filler;
+}
 
-        if (reichLatch == 0 && n.r[5] > 0) {
-            1 => reichLatch;
-            rch[i].record(1);
-            rch[i].play(0);
-            rchEnv[i].keyOff();
-        }
+fun string format(float val) {
+    " " => string p;
+    return (val + p).substring(0, 4);
+}
 
-        if (reichLatch == 1 && n.r[5] == 0) {
-            0 => reichLatch;
-            rch[i].record(0);
-            rch[i].play(1);
-            rch[i].speed(1.0);
-            rchEnv[i].keyOn();
+<<< "-~-~-~-~-~    -~-~-~-~-~    -~-~-~-~-~    -~-~-~-~-~    -~-~-~-~-~    -~-~-~-~-~", "" >>>;
+
+fun void uiPrint() {
+    while (true) {
+        0.5::second => now;
+        if (uiPrintOutput != prevUiPrintOutput) {
+            <<< uiPrintOutput, "" >>>;
+            uiPrintOutput => prevUiPrintOutput;
         }
     }
 }
 
+spork ~ uiPrint();
+
 while (true) {
     updateControl();
     updateAudio();
-
-    // <<< "In:", s[0].getScaledVal(), "Out:", s[4].getEasedScaledVal() >>>;
 
     updateDur => now;
 }
