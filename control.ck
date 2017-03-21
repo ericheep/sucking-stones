@@ -58,7 +58,7 @@ ADSR panEnv[NUM_MICS];
 Gain in[NUM_MICS];
 Gain out[NUM_MICS];
 
-10::ms => dur panEnvDuration;
+30::ms => dur panEnvDuration;
 
 for (0 => int i; i < NUM_MICS; i++) {
     dec[i].decays(6);
@@ -186,15 +186,14 @@ fun void randomPan() {
         (1.0 - freq) * panLength + panEnvDuration => dur panLength;
 
         if(freq > 0.1) {
-            orderPan(arr);
+            shufflePan(arr);
         }
 
         panLength => now;
 
         if(freq > 0.1) {
-            shufflePan(arr);
+            orderPan(arr);
         }
-
         panLength => now;
     }
 }
@@ -236,7 +235,7 @@ fun string format(float val) {
     return (val + p).substring(0, 4);
 }
 
-<<< "-~-~-~-~-~    -~-~-~-~-~    -~-~-~-~-~    -~-~-~-~-~    -~-~-~-~-~    -~-~-~-~-~", "" >>>;
+<<< "~", "" >>>;
 
 fun void uiPrint() {
     while (true) {
