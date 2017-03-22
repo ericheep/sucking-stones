@@ -4,11 +4,18 @@
 
 public class GrainStretch extends Chubgraph {
 
-    inlet => LiSa mic => ADSR env => ADSR arc => outlet;
+    LiSa mic[2];
+    ADSR env;
+
+    inlet => mic[0] => env => outlet;
+    inlet => mic[1] => env => outlet;
 
     0 => int m_stretching;
-    0 => int m_whichMic;
-    2.0::second => dur m_length;
+    32 => int m_grains;
+    1.0 => float m_rate;
+
+    1.0::second => dur m_bufferLength;
+    8.0::second => dur m_maxBufferLength;
 
     fun void stretch(int s) {
         if (s == 1) {
@@ -21,71 +28,79 @@ public class GrainStretch extends Chubgraph {
     }
 
     fun void length(dur l) {
-        l => m_length;
+        l => m_bufferLength;
     }
 
-    fun void cueArc(dur bufferLength) {
-        bufferLength/16.0 => dur envLength;
-        arc.attackTime(envLength);
-        arc.releaseTime(envLength);
-        arc.keyOn();
-        bufferLength - envLength => now;
-        arc.keyOff();
-        envLength => now;
+    fun void rate(float r) {
+        r => m_rate;
+    }
+
+    fun void grains(int g) {
+        g => m_grains;
     }
 
     fun void stretching() {
+        0 => int idx;
+        mic[0].duration(m_maxBufferLength);
+        mic[1].duration(m_maxBufferLength);
+
+        recordVoice(mic[idx], m_bufferLength);
+
         while (m_stretching) {
-            recordVoice(m_length);
-            m_length * Math.random2f(2.0, 4.0) => dur stretchLength;
-            spork ~ cueArc(stretchLength);
-            stretchVoice(m_length, stretchLength, 64);
+            spork ~ recordVoice(mic[(idx + 1) % 2], m_bufferLength);
+            (idx + 1) % 2 => idx;
+            stretchVoice(mic[idx], m_bufferLength, m_rate, m_grains);
         }
     }
 
-    fun void recordVoice(dur duration) {
-        mic.duration(duration);
+    fun void recordVoice(LiSa mic, dur bufferLength) {
+        mic.clear();
+        mic.recPos(0::samp);
         mic.record(1);
-        duration => now;
+        bufferLength => now;
         mic.record(0);
     }
 
     // all the sound stuff we're doing
-    fun void stretchVoice(dur duration, dur stretchRate, int windows) {
-        stretchRate/windows => dur grain;
+    fun void stretchVoice(LiSa mic, dur duration, float rate, int grains) {
+        (duration * 1.0/rate)/grains => dur grain;
+        grain/32.0 => dur grainEnv;
         grain * 0.5 => dur halfGrain;
 
         // for some reason if you try to put a sample
         // at a fraction of samp, it will silence ChucK
-        if (halfGrain < 1.0::samp) {
+        if (halfGrain < samp) {
             return;
         }
 
-        halfGrain/32.0 => dur halfGrainEnv;
 
         // envelope parameters
-        env.attackTime(halfGrainEnv);
-        env.releaseTime(halfGrainEnv);
+        env.attackTime(grainEnv);
+        env.releaseTime(grainEnv);
 
         halfGrain/samp => float halfGrainSamples;
-        ((duration/samp)$int)/windows => int sampleIncrement;
+        ((duration/samp)$int)/grains=> int sampleIncrement;
 
         mic.play(1);
 
         // bulk of the time stretching
-        for (0 => int i; i < windows; i++) {
+        for (0 => int i; i < grains; i++) {
             mic.playPos((i * sampleIncrement)::samp);
             (i * sampleIncrement)::samp + grain => dur end;
 
             // only fade if there will be no discontinuity errors
-            if (end < duration) {
+            if (duration > end) {
                 env.keyOn();
                 halfGrain => now;
                 env.keyOff();
-                halfGrain - halfGrainEnv => now;
+                halfGrain - grainEnv => now;
             }
             else {
-                grain => now;
+                (grain - (end - duration)) => dur endGrain;
+                env.keyOn();
+                endGrain * 0.5 => now;
+                env.keyOff();
+                endGrain * 0.5 - grainEnv => now;
             }
         }
 
@@ -95,9 +110,12 @@ public class GrainStretch extends Chubgraph {
 
 /*
 adc => GrainStretch g => dac;
-adc => Gain gr => dac;
+// adc => Gain gr => dac;
 
 g.stretch(1);
+g.rate(0.5);
+g.length(2000::ms);
+g.grains(100);
 
 while(true) {
     samp => now;

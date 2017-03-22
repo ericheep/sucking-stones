@@ -9,6 +9,7 @@ public class RandomReverse extends Chubgraph {
 
     0 => int m_listen;
     2::second => dur m_maxBufferLength;
+    2::second => dur m_bufferLength;
     0.5 => float m_influence;
     100::ms => dur m_envDuration;
     5::second => dur m_maxTimeBetween;
@@ -41,10 +42,11 @@ public class RandomReverse extends Chubgraph {
     }
 
     fun void listening() {
+        mic.duration(m_maxBufferLength);
         while (m_listen) {
             if (m_influence >= 0.01) {
                 Math.random2f(0.1, m_influence * 0.75) => float scale;
-                scale * m_maxBufferLength => dur bufferLength;
+                scale * m_bufferLength => dur bufferLength;
                 record(bufferLength);
                 playInReverse(bufferLength);
                 m_maxTimeBetween * Math.fabs(1.0 - m_influence) => now;
@@ -54,7 +56,6 @@ public class RandomReverse extends Chubgraph {
     }
 
     fun void record(dur bufferLength) {
-        mic.duration(bufferLength);
         mic.playPos(0::samp);
         mic.record(1);
         bufferLength => now;

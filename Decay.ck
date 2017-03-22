@@ -85,9 +85,7 @@ public class Decay extends Chubgraph {
     }
 }
 
-/*
 adc => Decay exp => dac;
-adc => Gain g => dac;
 
 exp.decays(16);
 exp.length(16::second);
@@ -97,4 +95,3 @@ exp.mix(1.0);
 while (true) {
     1::second => now;
 }
-*/

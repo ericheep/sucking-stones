@@ -8,12 +8,13 @@ public class LoopingChopper extends Chubgraph {
     inlet => mic[0] => outlet;
     inlet => mic[1] => outlet;
 
-    0 => int recOn;
     4 => int m_numChops;
     4 => int m_minChops;
     24 => int m_maxChops;
+
     m_maxChops - m_minChops => int m_chopRange;
     0 => int m_listen;
+    1::second => dur m_bufferLength;
 
     fun void setMinChops(int min) {
         min => m_minChops;
@@ -42,10 +43,13 @@ public class LoopingChopper extends Chubgraph {
 
     fun void recording() {
         0 => int idx;
-        1::second => dur bufferLength;
+        mic[0].duration(m_bufferLength);
+        mic[1].duration(m_bufferLength);
+
         while (m_listen) {
-            mic[idx].duration(bufferLength);
-            mic[idx].playPos(0::samp);
+            m_bufferLength => dur bufferLength;
+            mic[idx].clear();
+            mic[idx].recPos(0::samp);
             mic[idx].record(1);
             bufferLength => now;
             mic[idx].record(0);
@@ -71,15 +75,21 @@ public class LoopingChopper extends Chubgraph {
 
 
 }
-/*
-LoopingChopper l;
-adc => l => dac;
 
-l.record(1);
-l.density(1.0);
+/*
+4 => int NUM;
+LoopingChopper l[NUM];
+
+for (0 => int i; i < NUM; i++) {
+    adc => l[i] => dac;
+    l[i].listen(1);
+}
+
 
 while (true) {
+    for (0 => int i; i < NUM; i++) {
+        l[i].density(Math.random2f(0.4, 1.0));
+    }
     second => now;
-
 }
 */
