@@ -1,15 +1,14 @@
 4 => int NUM_MICS;
 
-Gain g[NUM_MICS];
+CNoise nois;
 
-for (int i; i < NUM_MICS; i++) {
-    adc.chan(i) => g[i] => dac.chan(i);
-}
+nois.gain(0.02);
+
 
 while (true) {
-    1::second => now;
+    for (int i; i < 4; i++) {
+        nois => dac.chan(i);
+        .5::second => now;
+        nois =< dac.chan(i);
+    }
 }
-
-
-
-

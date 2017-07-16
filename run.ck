@@ -11,6 +11,8 @@ Machine.add(me.dir() + "Decay.ck");
 Machine.add(me.dir() + "AsymptopicChopper.ck");
 Machine.add(me.dir() + "LoopingChopper.ck");
 
+100::ms => now;
+
 // midi value
 Machine.add(me.dir() + "MIDIValue.ck");
 

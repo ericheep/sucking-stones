@@ -16,6 +16,8 @@ class Knob extends MIDIValue {
 
 }
 
+4 => int NUM_MICS;
+
 8 => int NUM_SLIDERS;
 8 => int NUM_KNOBS;
 
@@ -45,8 +47,6 @@ fun void updateControl() {
 
 // audio -~-~-~-~-~-~-~
 
-4 => int NUM_MICS;
-
 HPF hp[NUM_MICS];
 Decay dec[NUM_MICS];
 RandomReverse rev[NUM_MICS];
@@ -73,7 +73,7 @@ for (0 => int i; i < NUM_MICS; i++) {
 
     // inputs in
     adc.chan(i) => hp[i] => in[i];
-    hp[i].freq(2000);
+    hp[i].freq(200);
 
     // sound chain
     in[i] => rev[i] => dec[i];
@@ -85,11 +85,7 @@ for (0 => int i; i < NUM_MICS; i++) {
     chp[i] => out[i];
     rev[i] => out[i];
 
-    out[i] => panEnv[i] => dac.chan(i);
-
-    panEnv[i].attackTime(panEnvDuration);
-    panEnv[i].releaseTime(panEnvDuration);
-    panEnv[i].keyOn();
+    out[i] => dac.chan(i);
 
     // breathing room -~-~-~-~-
     <<< "Channel ~", i, "~ Connected", "" >>>;
@@ -105,27 +101,37 @@ maxAsymptopicLength - minAsymptopicLength => dur asymptopicLengthRange;
 
 0.0 => float panningFrequency;
 
+0 => float prevDecayKnob;
+0 => float prevAsyKnob;
+0 => float prevRevKnob;
+
 fun void updateAudio() {
     for (0 => int i; i < NUM_MICS; i++) {
         // input gain controls
-        s[i].getEasedScaledVal() => float inGainKnob;
-        in[i].gain(inGainKnob);
+        s[i].getEasedScaledVal() => float inGainSlider;
+        in[i].gain(inGainSlider);
 
-        s[i + 4].getEasedScaledVal() => float outGainKnob;
-        out[i].gain(outGainKnob);
+        s[i + 4].getEasedScaledVal() => float outGainSlider;
+        out[i].gain(outGainSlider);
 
         // reverse controls
         k[0].getScaledVal() => float revKnob;
-        rev[i].setInfluence(revKnob);
-        rev[i].setReverseGain(revKnob);
+        if (revKnob != prevRevKnob) {
+            rev[i].setInfluence(revKnob);
+            rev[i].setReverseGain(revKnob);
+        }
 
         // decay controls
         k[1].getScaledVal() => float decayKnob;
-        dec[i].feedback(decayKnob);
+        if (decayKnob != prevDecayKnob) {
+            dec[i].feedback(decayKnob);
+        }
 
         k[2].getEasedScaledVal() => float asyKnob;
-        asy[i].gain(asyKnob);
-        asy[i].length(asyKnob * asymptopicLengthRange + minAsymptopicLength);
+        if (asyKnob != prevAsyKnob) {
+            asy[i].gain(asyKnob);
+            asy[i].length(asyKnob * asymptopicLengthRange + minAsymptopicLength);
+        }
 
         k[3].getEasedScaledVal() => float chpKnob;
         chp[i].gain(chpKnob);
@@ -135,7 +141,7 @@ fun void updateAudio() {
         k[4].getScaledVal() => float panKnob;
         panKnob => panningFrequency;
 
-        updatePrint(revKnob, decayKnob, asyKnob, chpKnob, panKnob);
+        // updatePrint(revKnob, decayKnob, asyKnob, chpKnob, panKnob);
     }
 }
 
@@ -198,7 +204,7 @@ fun void randomPan() {
     }
 }
 
-spork ~ randomPan();
+// spork ~ randomPan();
 
 // uiPrint, for sanity -~-~-~-~-~-~-~
 
