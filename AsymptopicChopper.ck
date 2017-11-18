@@ -31,6 +31,7 @@ public class AsymptopicChopper extends Chubgraph {
     fun void listening() {
         mic.duration(m_maxBufferLength);
         while (m_listen) {
+            mic.clear();
             mic.recPos(0::samp);
             mic.record(1);
             m_bufferLength => now;
@@ -42,13 +43,13 @@ public class AsymptopicChopper extends Chubgraph {
     fun void asymptopChop(dur bufferLength) {
         dur bufferStart;
         mic.play(1);
-        while (m_bufferLength > 100::ms) {
+        while (bufferLength > 100::ms) {
             Math.random2(0, 1) => int which;
-            m_bufferLength * 0.5 => m_bufferLength;
-            m_bufferLength * which => bufferStart;
+            bufferLength * 0.5 => bufferLength;
+            bufferLength => bufferStart;
             mic.playPos(bufferStart);
             mic.rampUp(50::ms);
-            m_bufferLength - 50::ms => now;
+            bufferLength - 50::ms => now;
             mic.rampDown(50::ms);
             50::ms => now;
         }
@@ -57,7 +58,7 @@ public class AsymptopicChopper extends Chubgraph {
 }
 
 /*
-4 => int NUM;
+1 => int NUM;
 
 AsymptopicChopper a[NUM];
 
@@ -67,12 +68,11 @@ for (0 => int i; i < NUM; i++) {
 }
 
 dac.gain(0.0);
+for (0 => int i; i < NUM; i++) {
+    a[i].length(Math.random2f(2.0, 5.0) * second);
+}
 
 while (true) {
-    for (0 => int i; i < NUM; i++) {
-        a[i].length(Math.random2f(0.9, 1.1) * second);
-    }
     second => now;
-
 }
 */

@@ -11,7 +11,7 @@ public class GrainStretch extends Chubgraph {
     inlet => mic[1] => env => outlet;
 
     0 => int m_stretching;
-    32 => int m_grains;
+    64 => int m_grains;
     1.0 => float m_rate;
 
     1.0::second => dur m_bufferLength;
@@ -113,9 +113,9 @@ adc => GrainStretch g => dac;
 // adc => Gain gr => dac;
 
 g.stretch(1);
-g.rate(0.5);
-g.length(2000::ms);
-g.grains(100);
+g.rate(0.75);
+g.length(1000::ms);
+g.grains(4);
 
 while(true) {
     samp => now;
